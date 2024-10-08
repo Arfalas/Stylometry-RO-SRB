@@ -1,0 +1,8 @@
+.
+├── stylometry.py              # Main Python script for stylometry analysis
+├── data/
+│   └── corpus.csv             # Corpus of texts with known authors
+├── models/
+│   └── stylometry_model.pkl   # Directory for saving the trained model
+├── README.md                  # Documentation
+└── requirements.txt           # Required libraries
