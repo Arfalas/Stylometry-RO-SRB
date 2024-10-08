@@ -1,0 +1,107 @@
+import pandas as pd
+import numpy as np
+import nltk
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, confusion_matrix
+import pickle
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Download NLTK data
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
+
+# Load the dataset
+def load_data(csv_file):
+    df = pd.read_csv(csv_file)
+    return df
+
+# Feature extraction functions
+
+def avg_word_length(text):
+    words = text.split()
+    return np.mean([len(word) for word in words])
+
+def sentence_length(text):
+    sentences = nltk.sent_tokenize(text)
+    return np.mean([len(nltk.word_tokenize(sentence)) for sentence in sentences])
+
+def pos_tag_frequency(text):
+    pos_tags = nltk.pos_tag(nltk.word_tokenize(text))
+    pos_freq = nltk.FreqDist(tag for word, tag in pos_tags)
+    return pos_freq
+
+# Extract stylometric features from text
+def extract_features(df):
+    df['avg_word_length'] = df['text'].apply(avg_word_length)
+    df['sentence_length'] = df['text'].apply(sentence_length)
+    return df
+
+# Vectorize text using word frequency
+def vectorize_text(df):
+    vectorizer = CountVectorizer(max_features=1000)
+    X = vectorizer.fit_transform(df['text']).toarray()
+    return X, vectorizer
+
+# Train-test split
+def split_data(X, y):
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    return X_train, X_test, y_train, y_test
+
+# Train classifier
+def train_classifier(X_train, y_train):
+    classifier = RandomForestClassifier(n_estimators=100, random_state=42)
+    classifier.fit(X_train, y_train)
+    return classifier
+
+# Evaluate the model
+def evaluate_model(classifier, X_test, y_test):
+    y_pred = classifier.predict(X_test)
+    print(classification_report(y_test, y_pred))
+    conf_matrix = confusion_matrix(y_test, y_pred)
+    
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=classifier.classes_, yticklabels=classifier.classes_)
+    plt.xlabel('Predicted')
+    plt.ylabel('True')
+    plt.title('Confusion Matrix')
+    plt.show()
+
+# Save the trained model
+def save_model(classifier, vectorizer, filename='models/stylometry_model.pkl'):
+    with open(filename, 'wb') as f:
+        pickle.dump((classifier, vectorizer), f)
+
+# Load the trained model
+def load_model(filename='models/stylometry_model.pkl'):
+    with open(filename, 'rb') as f:
+        classifier, vectorizer = pickle.load(f)
+    return classifier, vectorizer
+
+# Main function to run the stylometry analysis
+def main():
+    # Load data
+    df = load_data('data/corpus.csv')
+    
+    # Extract stylometric features
+    df = extract_features(df)
+    
+    # Vectorize text
+    X, vectorizer = vectorize_text(df)
+    
+    # Split data
+    X_train, X_test, y_train, y_test = split_data(X, df['author'])
+    
+    # Train classifier
+    classifier = train_classifier(X_train, y_train)
+    
+    # Evaluate classifier
+    evaluate_model(classifier, X_test, y_test)
+    
+    # Save the model
+    save_model(classifier, vectorizer)
+
+if __name__ == '__main__':
+    main()
